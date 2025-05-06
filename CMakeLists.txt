@@ -4,8 +4,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMakeMod
 
 project(sixaxispairer VERSION 1.1.0 LANGUAGES C)
 
-find_package(hidapi REQUIRED)
+
 set(HIDAPI_FIND_DEBUG ON CACHE BOOL "Enable debug output for FindHIDAPI module")
+
+find_package(hidapi REQUIRED)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
