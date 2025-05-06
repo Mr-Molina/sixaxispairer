@@ -24,9 +24,9 @@
 # IMPORTED Targets
 # ^^^^^^^^^^^^^^^^
 #
-# This module defines :prop_tgt:`IMPORTED` target ``HIDAPI::hidapi`` (in all cases or
-# if no components specified), ``HIDAPI::hidapi-libusb`` (if you requested the libusb component),
-# and ``HIDAPI::hidapi-hidraw`` (if you requested the hidraw component),
+# This module defines :prop_tgt:`IMPORTED` target ``hidapi::hidapi`` (in all cases or
+# if no components specified), ``hidapi::hidapi-libusb`` (if you requested the libusb component),
+# and ``hidapi::hidapi-hidraw`` (if you requested the hidraw component),
 #
 # Result Variables
 # ^^^^^^^^^^^^^^^^
@@ -354,11 +354,11 @@ if(HIDAPI_FOUND)
         hidapi_debug_message("HIDAPI version: ${HIDAPI_VERSION}")
     endif()
     
-    if(NOT TARGET HIDAPI::hidapi)
-        hidapi_debug_message("Creating HIDAPI::hidapi imported target")
-        add_library(HIDAPI::hidapi UNKNOWN IMPORTED)
+    if(NOT TARGET hidapi::hidapi)
+        hidapi_debug_message("Creating hidapi::hidapi imported target")
+        add_library(hidapi::hidapi UNKNOWN IMPORTED)
         set_target_properties(
-            HIDAPI::hidapi
+            hidapi::hidapi
             PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C"
                        IMPORTED_LOCATION "${HIDAPI_LIBRARY}"
                        INTERFACE_INCLUDE_DIRECTORIES "${HIDAPI_INCLUDE_DIR}"
@@ -371,22 +371,22 @@ else()
     endif()
 endif()
 
-if(HIDAPI_libusb_FOUND AND NOT TARGET HIDAPI::hidapi-libusb)
-    hidapi_debug_message("Creating HIDAPI::hidapi-libusb imported target")
-    add_library(HIDAPI::hidapi-libusb UNKNOWN IMPORTED)
+if(HIDAPI_libusb_FOUND AND NOT TARGET hidapi::hidapi-libusb)
+    hidapi_debug_message("Creating hidapi::hidapi-libusb imported target")
+    add_library(hidapi::hidapi-libusb UNKNOWN IMPORTED)
     set_target_properties(
-        HIDAPI::hidapi-libusb
+        hidapi::hidapi-libusb
         PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C"
                    IMPORTED_LOCATION "${HIDAPI_LIBUSB_LIBRARY}"
                    INTERFACE_INCLUDE_DIRECTORIES "${HIDAPI_INCLUDE_DIR}"
                    IMPORTED_LINK_INTERFACE_LIBRARIES Threads::Threads)
 endif()
 
-if(HIDAPI_hidraw_FOUND AND NOT TARGET HIDAPI::hidapi-hidraw)
-    hidapi_debug_message("Creating HIDAPI::hidapi-hidraw imported target")
-    add_library(HIDAPI::hidapi-hidraw UNKNOWN IMPORTED)
+if(HIDAPI_hidraw_FOUND AND NOT TARGET hidapi::hidapi-hidraw)
+    hidapi_debug_message("Creating hidapi::hidapi-hidraw imported target")
+    add_library(hidapi::hidapi-hidraw UNKNOWN IMPORTED)
     set_target_properties(
-        HIDAPI::hidapi-hidraw
+        hidapi::hidapi-hidraw
         PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C"
                    IMPORTED_LOCATION "${HIDAPI_HIDRAW_LIBRARY}"
                    INTERFACE_INCLUDE_DIRECTORIES "${HIDAPI_INCLUDE_DIR}"
