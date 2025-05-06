@@ -232,10 +232,13 @@ int main(int argc, char **argv)
         int found_devices = 0;
         int list_all = (strncmp(argv[1], "-a", 2) == 0);
 
-        if (list_all) {
+        if (list_all)
+        {
             printf("Listing all connected USB devices:\n");
             devs = hid_enumerate(0, 0); /* Enumerate all USB HID devices */
-        } else {
+        }
+        else
+        {
             printf("Listing all connected Sony USB devices:\n");
             devs = hid_enumerate(VENDOR, 0); /* Enumerate all devices with Sony vendor ID */
         }
@@ -248,7 +251,7 @@ int main(int argc, char **argv)
             {
                 found_devices++;
                 printf("Device %d:\n", found_devices);
-                printf("  Vendor ID:       0x%04x%s\n", cur_dev->vendor_id, 
+                printf("  Vendor ID:       0x%04x%s\n", cur_dev->vendor_id,
                        (cur_dev->vendor_id == VENDOR) ? " (Sony)" : "");
                 printf("  Product ID:      0x%04x\n", cur_dev->product_id);
                 printf("  Manufacturer:    %ls\n", cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown)");
@@ -258,7 +261,8 @@ int main(int argc, char **argv)
                 printf("  Path:            %s\n", cur_dev->path);
 
                 /* Check if this is a supported controller */
-                if (cur_dev->vendor_id == VENDOR) {
+                if (cur_dev->vendor_id == VENDOR)
+                {
                     for (size_t i = 0; i < sizeof(PRODUCT) / sizeof(*PRODUCT); i++)
                     {
                         if (cur_dev->product_id == PRODUCT[i])
@@ -275,18 +279,24 @@ int main(int argc, char **argv)
 
         if (found_devices == 0)
         {
-            if (list_all) {
+            if (list_all)
+            {
                 printf("No USB HID devices found on the system.\n");
-            } else {
+            }
+            else
+            {
                 printf("No Sony USB devices found.\n");
                 printf("Use '%s -a' to list all USB devices on the system.\n", argv[0]);
             }
         }
         else
         {
-            if (list_all) {
+            if (list_all)
+            {
                 printf("Found %d USB device(s).\n", found_devices);
-            } else {
+            }
+            else
+            {
                 printf("Found %d Sony USB device(s).\n", found_devices);
                 printf("Use '%s -a' to list all USB devices on the system.\n", argv[0]);
             }
@@ -347,19 +357,19 @@ int main(int argc, char **argv)
             char response[10];
             fprintf(stderr, "No Sony devices found. Make sure the controller is connected via USB and powered on\n");
             fprintf(stderr, "Would you like to list all USB devices? (y/n): ");
-            
+
             if (fgets(response, sizeof(response), stdin) != NULL)
             {
                 if (response[0] == 'y' || response[0] == 'Y')
                 {
                     /* List all USB devices regardless of vendor */
                     printf("\nListing all connected USB devices:\n");
-                    hid_free_enumeration(devs);  /* Free the Sony-only enumeration */
-                    
-                    devs = hid_enumerate(0, 0);  /* Enumerate all USB HID devices */
+                    hid_free_enumeration(devs); /* Free the Sony-only enumeration */
+
+                    devs = hid_enumerate(0, 0); /* Enumerate all USB HID devices */
                     cur_dev = devs;
                     int all_devices = 0;
-                    
+
                     while (cur_dev)
                     {
                         all_devices++;
@@ -371,10 +381,10 @@ int main(int argc, char **argv)
                         printf("  Serial Number:   %ls\n", cur_dev->serial_number ? cur_dev->serial_number : L"(None)");
                         printf("  Interface:       %d\n", cur_dev->interface_number);
                         printf("  Path:            %s\n\n", cur_dev->path);
-                        
+
                         cur_dev = cur_dev->next;
                     }
-                    
+
                     if (all_devices == 0)
                     {
                         printf("No USB HID devices found on the system.\n");
