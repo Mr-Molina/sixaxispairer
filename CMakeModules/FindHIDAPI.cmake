@@ -19,7 +19,7 @@
 # This module respects several COMPONENTS specifying the backend you prefer:
 # ``any`` (the default), ``libusb``, and ``hidraw``.
 # The availablility of the latter two depends on your platform.
-#
+# 
 #
 # IMPORTED Targets
 # ^^^^^^^^^^^^^^^^
