@@ -59,7 +59,7 @@
 # SPDX-License-Identifier: BSL-1.0
 
 # Debug option
-option(HIDAPI_FIND_DEBUG "Enable debug output for FindHIDAPI module" OFF)
+option(HIDAPI_FIND_DEBUG "Enable debug output for FindHIDAPI module" ON)
 
 # Debug message macro
 macro(hidapi_debug_message)
