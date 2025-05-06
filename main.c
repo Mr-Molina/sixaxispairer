@@ -362,6 +362,7 @@ int main(int argc, char **argv)
     {
         struct hid_device_info *devs, *cur_dev;
         int found_sony_devices = 0;
+        int is_mac_address_provided = (argc == 2 && argv[1][0] != '-');
 
         fprintf(stderr, "%s[ERROR]%s Could not find any PlayStation controllers (Vendor ID: %s0x%04x%s, Product IDs: %s0x%04x%s, %s0x%04x%s)\n",
                 COLOR_RED, COLOR_RESET, COLOR_CYAN, VENDOR, COLOR_RESET, 
@@ -388,54 +389,64 @@ int main(int argc, char **argv)
 
         if (found_sony_devices == 0)
         {
-            char response[10];
             fprintf(stderr, "%s[WARNING]%s No Sony devices found. Make sure the controller is connected via USB and powered on\n", 
                     COLOR_YELLOW, COLOR_RESET);
-            fprintf(stderr, "%s[PROMPT]%s Would you like to list all USB devices? (y/n): ", COLOR_MAGENTA, COLOR_RESET);
-
-            if (fgets(response, sizeof(response), stdin) != NULL)
+            
+            /* Only ask to list all devices if we're not trying to set a MAC address */
+            if (!is_mac_address_provided)
             {
-                if (response[0] == 'y' || response[0] == 'Y')
+                char response[10];
+                fprintf(stderr, "%s[PROMPT]%s Would you like to list all USB devices? (y/n): ", COLOR_MAGENTA, COLOR_RESET);
+
+                if (fgets(response, sizeof(response), stdin) != NULL)
                 {
-                    /* List all USB devices regardless of vendor */
-                    printf("\n%s%s=== Listing all connected USB devices ===%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
-                    hid_free_enumeration(devs); /* Free the Sony-only enumeration */
-
-                    devs = hid_enumerate(0, 0); /* Enumerate all USB HID devices */
-                    cur_dev = devs;
-                    int all_devices = 0;
-
-                    while (cur_dev)
+                    if (response[0] == 'y' || response[0] == 'Y')
                     {
-                        all_devices++;
-                        printf("%s%s┌─ Device %d ─────────────────────────────────────%s\n", COLOR_BOLD, COLOR_MAGENTA, all_devices, COLOR_RESET);
-                        printf("%s│  Vendor ID:       0x%04x%s\n", COLOR_MAGENTA, cur_dev->vendor_id, COLOR_RESET);
-                        printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, cur_dev->product_id, COLOR_RESET);
-                        printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA, 
-                               cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown)", COLOR_RESET);
-                        printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA, 
-                               cur_dev->product_string ? cur_dev->product_string : L"(Unknown)", COLOR_RESET);
-                        printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA, 
-                               cur_dev->serial_number ? cur_dev->serial_number : L"(None)", COLOR_RESET);
-                        printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, cur_dev->interface_number, COLOR_RESET);
-                        printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, cur_dev->path, COLOR_RESET);
-                        printf("%s└───────────────────────────────────────────────%s\n\n", COLOR_MAGENTA, COLOR_RESET);
+                        /* List all USB devices regardless of vendor */
+                        printf("\n%s%s=== Listing all connected USB devices ===%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
+                        hid_free_enumeration(devs); /* Free the Sony-only enumeration */
 
-                        cur_dev = cur_dev->next;
-                    }
+                        devs = hid_enumerate(0, 0); /* Enumerate all USB HID devices */
+                        cur_dev = devs;
+                        int all_devices = 0;
 
-                    if (all_devices == 0)
-                    {
-                        printf("%s[INFO]%s No USB HID devices found on the system.\n", COLOR_BLUE, COLOR_RESET);
-                    }
-                    else
-                    {
-                        printf("%s[INFO]%s Found %s%d%s USB HID device(s).\n", 
-                               COLOR_BLUE, COLOR_RESET, COLOR_YELLOW, all_devices, COLOR_RESET);
-                        printf("       If your controller is in the list above but not recognized,\n");
-                        printf("       it might be in a different mode or require special drivers.\n");
+                        while (cur_dev)
+                        {
+                            all_devices++;
+                            printf("%s%s┌─ Device %d ─────────────────────────────────────%s\n", COLOR_BOLD, COLOR_MAGENTA, all_devices, COLOR_RESET);
+                            printf("%s│  Vendor ID:       0x%04x%s\n", COLOR_MAGENTA, cur_dev->vendor_id, COLOR_RESET);
+                            printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, cur_dev->product_id, COLOR_RESET);
+                            printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA, 
+                                   cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown)", COLOR_RESET);
+                            printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA, 
+                                   cur_dev->product_string ? cur_dev->product_string : L"(Unknown)", COLOR_RESET);
+                            printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA, 
+                                   cur_dev->serial_number ? cur_dev->serial_number : L"(None)", COLOR_RESET);
+                            printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, cur_dev->interface_number, COLOR_RESET);
+                            printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, cur_dev->path, COLOR_RESET);
+                            printf("%s└───────────────────────────────────────────────%s\n\n", COLOR_MAGENTA, COLOR_RESET);
+
+                            cur_dev = cur_dev->next;
+                        }
+
+                        if (all_devices == 0)
+                        {
+                            printf("%s[INFO]%s No USB HID devices found on the system.\n", COLOR_BLUE, COLOR_RESET);
+                        }
+                        else
+                        {
+                            printf("%s[INFO]%s Found %s%d%s USB HID device(s).\n", 
+                                   COLOR_BLUE, COLOR_RESET, COLOR_YELLOW, all_devices, COLOR_RESET);
+                            printf("       If your controller is in the list above but not recognized,\n");
+                            printf("       it might be in a different mode or require special drivers.\n");
+                        }
                     }
                 }
+            }
+            else
+            {
+                fprintf(stderr, "%s[INFO]%s Cannot set MAC address without a connected controller.\n", COLOR_BLUE, COLOR_RESET);
+                fprintf(stderr, "       Use '%s%s -a%s' to list all USB devices on the system.\n", COLOR_CYAN, argv[0], COLOR_RESET);
             }
         }
         else
