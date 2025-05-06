@@ -363,10 +363,18 @@ int main(int argc, char **argv)
         struct hid_device_info *devs, *cur_dev;
         int found_sony_devices = 0;
         int is_mac_address_provided = (argc == 2 && argv[1][0] != '-');
+        hid_device *alt_dev = NULL;  /* For non-standard devices */
+        struct hid_device_info *selected_device = NULL;
 
         fprintf(stderr, "%s[ERROR]%s Could not find any PlayStation controllers (Vendor ID: %s0x%04x%s, Product IDs: %s0x%04x%s, %s0x%04x%s)\n",
                 COLOR_RED, COLOR_RESET, COLOR_CYAN, VENDOR, COLOR_RESET, 
                 COLOR_CYAN, PRODUCT[0], COLOR_RESET, COLOR_CYAN, PRODUCT[1], COLOR_RESET);
+
+        /* If a MAC address is provided, we'll try to find any HID device to use */
+        if (is_mac_address_provided)
+        {
+            printf("%s[INFO]%s MAC address provided. Will attempt to find a compatible device...\n", COLOR_BLUE, COLOR_RESET);
+        }
 
         /* Search for any Sony devices that might be connected */
         fprintf(stderr, "%s[INFO]%s Searching for other Sony devices...\n", COLOR_BLUE, COLOR_RESET);
@@ -383,10 +391,92 @@ int main(int argc, char **argv)
                         cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown manufacturer)",
                         cur_dev->product_string ? cur_dev->product_string : L"(Unknown product)",
                         cur_dev->serial_number ? cur_dev->serial_number : L"(No serial number)");
+                
+                /* If we have a MAC address to set and this is the first Sony device, select it */
+                if (is_mac_address_provided && !selected_device)
+                {
+                    selected_device = cur_dev;
+                }
             }
             cur_dev = cur_dev->next;
         }
 
+        /* If we found Sony devices and have a MAC address to set */
+        if (found_sony_devices > 0 && is_mac_address_provided && selected_device)
+        {
+            printf("%s[INFO]%s Attempting to use Sony device (Product ID: %s0x%04x%s) for MAC address setting...\n",
+                   COLOR_BLUE, COLOR_RESET, COLOR_CYAN, selected_device->product_id, COLOR_RESET);
+            
+            alt_dev = hid_open(selected_device->vendor_id, selected_device->product_id, NULL);
+            if (alt_dev)
+            {
+                printf("%s[WARNING]%s This device is not a standard PlayStation controller.\n", COLOR_YELLOW, COLOR_RESET);
+                printf("          MAC address setting may not work as expected.\n");
+                
+                /* Set the MAC address */
+                pair_device(alt_dev, argv[1], strlen(argv[1]));
+                
+                /* Clean up */
+                hid_close(alt_dev);
+                hid_free_enumeration(devs);
+                hid_exit();
+                return 0;
+            }
+        }
+
+        /* If no Sony devices or couldn't open the Sony device, try any HID device if MAC address is provided */
+        if (is_mac_address_provided && (!found_sony_devices || !alt_dev))
+        {
+            hid_free_enumeration(devs); /* Free the Sony-only enumeration */
+            devs = hid_enumerate(0, 0); /* Enumerate all USB HID devices */
+            cur_dev = devs;
+            int all_devices = 0;
+            selected_device = NULL;
+
+            printf("%s[INFO]%s Searching for any USB HID device that might work...\n", COLOR_BLUE, COLOR_RESET);
+            
+            while (cur_dev)
+            {
+                all_devices++;
+                /* Skip devices with interface -1 as they're often not accessible */
+                if (cur_dev->interface_number != -1 && !selected_device)
+                {
+                    selected_device = cur_dev;
+                }
+                cur_dev = cur_dev->next;
+            }
+
+            if (selected_device)
+            {
+                printf("%s[INFO]%s Attempting to use non-Sony device (Vendor ID: %s0x%04x%s, Product ID: %s0x%04x%s)\n",
+                       COLOR_BLUE, COLOR_RESET, 
+                       COLOR_CYAN, selected_device->vendor_id, COLOR_RESET,
+                       COLOR_CYAN, selected_device->product_id, COLOR_RESET);
+                
+                alt_dev = hid_open(selected_device->vendor_id, selected_device->product_id, NULL);
+                if (alt_dev)
+                {
+                    printf("%s[WARNING]%s This is not a Sony device. MAC address setting will likely fail,\n", 
+                           COLOR_YELLOW, COLOR_RESET);
+                    printf("          but an attempt will be made anyway.\n");
+                    
+                    /* Set the MAC address */
+                    pair_device(alt_dev, argv[1], strlen(argv[1]));
+                    
+                    /* Clean up */
+                    hid_close(alt_dev);
+                    hid_free_enumeration(devs);
+                    hid_exit();
+                    return 0;
+                }
+                else
+                {
+                    printf("%s[ERROR]%s Failed to open the selected device.\n", COLOR_RED, COLOR_RESET);
+                }
+            }
+        }
+
+        /* If we reach here, we couldn't find or open any suitable device */
         if (found_sony_devices == 0)
         {
             fprintf(stderr, "%s[WARNING]%s No Sony devices found. Make sure the controller is connected via USB and powered on\n", 
@@ -448,6 +538,10 @@ int main(int argc, char **argv)
                 fprintf(stderr, "%s[INFO]%s Cannot set MAC address without a connected controller.\n", COLOR_BLUE, COLOR_RESET);
                 fprintf(stderr, "       Use '%s%s -a%s' to list all USB devices on the system.\n", COLOR_CYAN, argv[0], COLOR_RESET);
             }
+        }
+        else if (is_mac_address_provided)
+        {
+            fprintf(stderr, "%s[ERROR]%s Failed to open any device for MAC address setting.\n", COLOR_RED, COLOR_RESET);
         }
         else
         {
