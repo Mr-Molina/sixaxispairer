@@ -135,14 +135,20 @@ static void pair_device(hid_device *dev, const char *mac, size_t mac_len)
     
     /* Validate MAC address format and convert to bytes */
     if ((mac_len != 12 && mac_len != 17) || !mac_to_bytes(mac, mac_len, buf+2, sizeof(buf)-2)) {
-        printf("Invalid mac\n");
+        printf("Invalid MAC address format: %s\n", mac);
+        printf("MAC address must be in format 'AABBCCDDEEFF' or 'AA:BB:CC:DD:EE:FF'\n");
         return;
     }
 
     /* Send the feature report to the controller */
+    printf("Attempting to set MAC address to %02x:%02x:%02x:%02x:%02x:%02x...\n", 
+           buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
     ret = hid_send_feature_report(dev, buf, sizeof(buf));
     if (ret == -1) {
-        printf("Failed to set mac\n");
+        printf("Failed to set MAC address. Error: %ls\n", hid_error(dev));
+    } else {
+        printf("Successfully set MAC address to %02x:%02x:%02x:%02x:%02x:%02x\n", 
+               buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
     }
 }
 
@@ -162,14 +168,16 @@ static void show_pairing(hid_device *dev)
     buf[1] = 0x0;            /* Reserved byte, must be zero */
 
     /* Get the current MAC address from the controller */
+    printf("Retrieving current MAC address from controller...\n");
     ret = hid_get_feature_report(dev, buf, sizeof(buf));
     if (ret < 8) {
-        printf("Read error\n");
+        printf("Failed to read MAC address. Error: %ls\n", hid_error(dev));
         return;
     }
     
     /* Print the MAC address in standard format XX:XX:XX:XX:XX:XX */
-    printf("%02x:%02x:%02x:%02x:%02x:%02x\n", buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
+    printf("Current controller MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+           buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
 }
 
 /**
@@ -196,16 +204,25 @@ int main(int argc, char **argv)
     }
 
     /* Try to open a connection to any supported PlayStation controller */
+    dev = NULL;
+    printf("Searching for PlayStation controllers...\n");
     for (size_t i = 0; i < sizeof(PRODUCT) / sizeof(*PRODUCT); i++) {
+        printf("Trying to connect to %s (Vendor ID: 0x%04x, Product ID: 0x%04x)...\n", 
+               (PRODUCT[i] == 0x0268) ? "SixAxis Controller" : "Move Motion Controller", 
+               VENDOR, PRODUCT[i]);
         dev = hid_open(VENDOR, PRODUCT[i], NULL);
         if (dev != NULL) {
+            printf("Successfully connected to %s\n", 
+                   (PRODUCT[i] == 0x0268) ? "SixAxis Controller" : "Move Motion Controller");
             break;
         }
     }
     
     /* Check if a controller was found */
     if (dev == NULL) {
-        fprintf(stderr, "Could not find SixAxis controller\n");
+        fprintf(stderr, "Could not find any PlayStation controllers (Vendor ID: 0x%04x, Product IDs: 0x%04x, 0x%04x)\n", 
+                VENDOR, PRODUCT[0], PRODUCT[1]);
+        fprintf(stderr, "Make sure the controller is connected via USB and powered on\n");
         return 0;
     }
 
