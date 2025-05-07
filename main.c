@@ -132,6 +132,141 @@ static int mac_to_bytes(const char *in, size_t in_len, unsigned char *out, size_
 }
 
 /**
+ * Retrieves and displays all available information from a HID device
+ * by trying different report IDs
+ *
+ * @param dev Handle to the HID device
+ */
+static void dump_device_info(hid_device *dev)
+{
+    struct hid_device_info *device_info = hid_get_device_info(dev);
+    unsigned char report_buf[256];
+    int ret;
+    
+    printf("\n%s%s=== Detailed Device Information ===%s\n", COLOR_BOLD, COLOR_GREEN, COLOR_RESET);
+    
+    /* Display basic device information from the HID API */
+    if (device_info)
+    {
+        printf("%s%s┌─ Basic Device Information ─────────────────────%s\n", COLOR_BOLD, COLOR_MAGENTA, COLOR_RESET);
+        printf("%s│  Vendor ID:       0x%04x%s%s\n", COLOR_MAGENTA, device_info->vendor_id,
+               (device_info->vendor_id == VENDOR) ? COLOR_YELLOW " (Sony)" COLOR_RESET : "", COLOR_RESET);
+        printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, device_info->product_id, COLOR_RESET);
+        printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA,
+               device_info->manufacturer_string ? device_info->manufacturer_string : L"(Unknown)", COLOR_RESET);
+        printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA,
+               device_info->product_string ? device_info->product_string : L"(Unknown)", COLOR_RESET);
+        printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA,
+               device_info->serial_number ? device_info->serial_number : L"(None)", COLOR_RESET);
+        printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, device_info->interface_number, COLOR_RESET);
+        printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, device_info->path, COLOR_RESET);
+        printf("%s│  Release Number:  %hx.%hx%s\n", COLOR_MAGENTA, 
+               device_info->release_number >> 8, device_info->release_number & 0xff, COLOR_RESET);
+        printf("%s│  Usage Page:      0x%04x%s\n", COLOR_MAGENTA, device_info->usage_page, COLOR_RESET);
+        printf("%s│  Usage:           0x%04x%s\n", COLOR_MAGENTA, device_info->usage, COLOR_RESET);
+        printf("%s└───────────────────────────────────────────────%s\n\n", COLOR_MAGENTA, COLOR_RESET);
+    }
+    
+    /* Try to get controller-specific information using known report IDs */
+    printf("%s%s┌─ Controller-Specific Information ──────────────%s\n", COLOR_BOLD, COLOR_MAGENTA, COLOR_RESET);
+    
+    /* Report 0xF2 - Controller information (firmware version, Bluetooth MAC) */
+    memset(report_buf, 0, sizeof(report_buf));
+    report_buf[0] = 0xF2;
+    ret = hid_get_feature_report(dev, report_buf, sizeof(report_buf));
+    if (ret > 0)
+    {
+        printf("%s│  [Report 0xF2] Controller Information:%s\n", COLOR_MAGENTA, COLOR_RESET);
+        printf("%s│    Firmware Version: %d.%d%s\n", COLOR_MAGENTA, 
+               report_buf[1], report_buf[2], COLOR_RESET);
+        printf("%s│    Bluetooth MAC:    %02x:%02x:%02x:%02x:%02x:%02x%s\n", COLOR_MAGENTA,
+               report_buf[4], report_buf[5], report_buf[6], 
+               report_buf[7], report_buf[8], report_buf[9], COLOR_RESET);
+    }
+    
+    /* Report 0xF5 - Current MAC address pairing */
+    memset(report_buf, 0, sizeof(report_buf));
+    report_buf[0] = MAC_REPORT_ID; /* 0xF5 */
+    ret = hid_get_feature_report(dev, report_buf, sizeof(report_buf));
+    if (ret > 0)
+    {
+        printf("%s│  [Report 0xF5] Current MAC Pairing:%s\n", COLOR_MAGENTA, COLOR_RESET);
+        printf("%s│    Paired MAC:       %02x:%02x:%02x:%02x:%02x:%02x%s\n", COLOR_MAGENTA,
+               report_buf[2], report_buf[3], report_buf[4], 
+               report_buf[5], report_buf[6], report_buf[7], COLOR_RESET);
+    }
+    
+    /* Try other known PlayStation controller report IDs */
+    
+    /* Report 0xA3 - PS3 Controller status */
+    memset(report_buf, 0, sizeof(report_buf));
+    report_buf[0] = 0xA3;
+    ret = hid_get_feature_report(dev, report_buf, sizeof(report_buf));
+    if (ret > 0)
+    {
+        printf("%s│  [Report 0xA3] Controller Status:%s\n", COLOR_MAGENTA, COLOR_RESET);
+        printf("%s│    Data: ", COLOR_MAGENTA);
+        for (int i = 1; i < 10 && i < ret; i++)
+        {
+            printf("%02x ", report_buf[i]);
+        }
+        printf("...%s\n", COLOR_RESET);
+    }
+    
+    /* Report 0x01 - Controller capabilities/features */
+    memset(report_buf, 0, sizeof(report_buf));
+    report_buf[0] = 0x01;
+    ret = hid_get_feature_report(dev, report_buf, sizeof(report_buf));
+    if (ret > 0)
+    {
+        printf("%s│  [Report 0x01] Controller Capabilities:%s\n", COLOR_MAGENTA, COLOR_RESET);
+        printf("%s│    Data: ", COLOR_MAGENTA);
+        for (int i = 1; i < 10 && i < ret; i++)
+        {
+            printf("%02x ", report_buf[i]);
+        }
+        printf("...%s\n", COLOR_RESET);
+    }
+    
+    /* Try to discover other report IDs by scanning */
+    printf("%s│  [Report Discovery] Scanning for additional report IDs:%s\n", COLOR_MAGENTA, COLOR_RESET);
+    int found_reports = 0;
+    
+    /* Only scan a subset of possible report IDs to avoid taking too long */
+    unsigned char report_ids[] = {0x00, 0x02, 0x10, 0x12, 0x81, 0xA0, 0xF0, 0xF1, 0xF3, 0xF4, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA};
+    
+    for (size_t i = 0; i < sizeof(report_ids); i++)
+    {
+        /* Skip report IDs we've already tried */
+        if (report_ids[i] == 0x01 || report_ids[i] == 0xA3 || 
+            report_ids[i] == 0xF2 || report_ids[i] == MAC_REPORT_ID)
+            continue;
+            
+        memset(report_buf, 0, sizeof(report_buf));
+        report_buf[0] = report_ids[i];
+        ret = hid_get_feature_report(dev, report_buf, sizeof(report_buf));
+        
+        if (ret > 0)
+        {
+            found_reports++;
+            printf("%s│    [Report 0x%02x] Data: ", COLOR_MAGENTA, report_ids[i]);
+            for (int j = 1; j < 8 && j < ret; j++)
+            {
+                printf("%02x ", report_buf[j]);
+            }
+            printf("...%s\n", COLOR_RESET);
+        }
+    }
+    
+    if (found_reports == 0)
+    {
+        printf("%s│    No additional report IDs found%s\n", COLOR_MAGENTA, COLOR_RESET);
+    }
+    
+    printf("%s└───────────────────────────────────────────────%s\n", COLOR_MAGENTA, COLOR_RESET);
+}
+
+/**
  * Pairs a PlayStation controller with the specified MAC address
  *
  * @param dev Handle to the HID device
@@ -174,42 +309,7 @@ static void pair_device(hid_device *dev, const char *mac, size_t mac_len)
                buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], COLOR_RESET);
         
         /* Get detailed device information when pairing is successful */
-        struct hid_device_info *device_info = hid_get_device_info(dev);
-        if (device_info)
-        {
-            printf("\n%s%s=== Device Information ===%s\n", COLOR_BOLD, COLOR_GREEN, COLOR_RESET);
-            printf("%s│  Vendor ID:       0x%04x%s%s\n", COLOR_MAGENTA, device_info->vendor_id,
-                   (device_info->vendor_id == VENDOR) ? COLOR_YELLOW " (Sony)" COLOR_RESET : "", COLOR_RESET);
-            printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, device_info->product_id, COLOR_RESET);
-            printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA,
-                   device_info->manufacturer_string ? device_info->manufacturer_string : L"(Unknown)", COLOR_RESET);
-            printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA,
-                   device_info->product_string ? device_info->product_string : L"(Unknown)", COLOR_RESET);
-            printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA,
-                   device_info->serial_number ? device_info->serial_number : L"(None)", COLOR_RESET);
-            printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, device_info->interface_number, COLOR_RESET);
-            printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, device_info->path, COLOR_RESET);
-            printf("%s│  Release Number:  %hx.%hx%s\n", COLOR_MAGENTA, 
-                   device_info->release_number >> 8, device_info->release_number & 0xff, COLOR_RESET);
-            printf("%s│  Usage Page:      0x%04x%s\n", COLOR_MAGENTA, device_info->usage_page, COLOR_RESET);
-            printf("%s│  Usage:           0x%04x%s\n", COLOR_MAGENTA, device_info->usage, COLOR_RESET);
-            
-            /* Additional controller-specific information */
-            unsigned char report_buf[64];
-            memset(report_buf, 0, sizeof(report_buf));
-            report_buf[0] = 0xF2; /* Controller information report ID */
-            
-            if (hid_get_feature_report(dev, report_buf, sizeof(report_buf)) > 0)
-            {
-                printf("%s│  Firmware Ver:    %d.%d%s\n", COLOR_MAGENTA, 
-                       report_buf[1], report_buf[2], COLOR_RESET);
-                printf("%s│  Bluetooth MAC:   %02x:%02x:%02x:%02x:%02x:%02x%s\n", COLOR_MAGENTA,
-                       report_buf[4], report_buf[5], report_buf[6], 
-                       report_buf[7], report_buf[8], report_buf[9], COLOR_RESET);
-            }
-            
-            printf("%s└───────────────────────────────────────────────%s\n", COLOR_MAGENTA, COLOR_RESET);
-        }
+        dump_device_info(dev);
     }
 }
 
@@ -242,6 +342,17 @@ static void show_pairing(hid_device *dev)
     printf("%s[INFO]%s Current controller MAC address: %s%02x:%02x:%02x:%02x:%02x:%02x%s\n",
            COLOR_BLUE, COLOR_RESET, COLOR_CYAN,
            buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], COLOR_RESET);
+           
+    /* Ask if user wants to see detailed device information */
+    char response[10];
+    printf("%s[PROMPT]%s Would you like to see detailed device information? (y/n): ", COLOR_MAGENTA, COLOR_RESET);
+    if (fgets(response, sizeof(response), stdin) != NULL)
+    {
+        if (response[0] == 'y' || response[0] == 'Y')
+        {
+            dump_device_info(dev);
+        }
+    }
 }
 
 /**
@@ -280,18 +391,91 @@ int main(int argc, char **argv)
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
         printf("%s\t%s %s-a%s      - List all connected USB devices (not just Sony)%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
+        printf("%s\t%s %s-d%s      - Dump all available information from connected controller%s\n",
+               COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
         printf("%s\t%s %s-h%s      - Show this help message%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
         return 0;
     }
 
-    /* Check if user wants to list devices */
-    if (argc == 2 && (strncmp(argv[1], "-l", 2) == 0 || strncmp(argv[1], "-a", 2) == 0))
+    /* Check if user wants to list devices or dump device info */
+    if (argc == 2 && (strncmp(argv[1], "-l", 2) == 0 || strncmp(argv[1], "-a", 2) == 0 || strncmp(argv[1], "-d", 2) == 0))
     {
         struct hid_device_info *devs, *cur_dev;
         int found_devices = 0;
         int list_all = (strncmp(argv[1], "-a", 2) == 0);
+        int dump_info = (strncmp(argv[1], "-d", 2) == 0);
 
+        /* If user wants to dump device info, connect to a controller and show all information */
+        if (dump_info)
+        {
+            printf("%s%s=== Dumping PlayStation Controller Information ===%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
+            
+            /* Try to open a connection to any supported PlayStation controller */
+            dev = NULL;
+            printf("%s[INFO]%s Searching for PlayStation controllers...\n", COLOR_BLUE, COLOR_RESET);
+            for (size_t i = 0; i < sizeof(PRODUCT) / sizeof(*PRODUCT); i++)
+            {
+                printf("%s[INFO]%s Trying to connect to %s%s%s (Vendor ID: %s0x%04x%s, Product ID: %s0x%04x%s)...\n",
+                       COLOR_BLUE, COLOR_RESET, COLOR_YELLOW,
+                       (PRODUCT[i] == 0x0268) ? "SixAxis Controller" : "Move Motion Controller",
+                       COLOR_RESET, COLOR_CYAN, VENDOR, COLOR_RESET, COLOR_CYAN, PRODUCT[i], COLOR_RESET);
+                dev = hid_open(VENDOR, PRODUCT[i], NULL);
+                if (dev != NULL)
+                {
+                    printf("%s[SUCCESS]%s Connected to %s%s%s\n",
+                           COLOR_GREEN, COLOR_RESET, COLOR_YELLOW,
+                           (PRODUCT[i] == 0x0268) ? "SixAxis Controller" : "Move Motion Controller",
+                           COLOR_RESET);
+                    
+                    /* Dump all available device information */
+                    dump_device_info(dev);
+                    
+                    /* Clean up and exit */
+                    hid_close(dev);
+                    hid_exit();
+                    return 0;
+                }
+            }
+            
+            /* If we couldn't find a supported controller, try any Sony device */
+            printf("%s[INFO]%s No standard PlayStation controllers found. Trying any Sony device...\n", COLOR_BLUE, COLOR_RESET);
+            devs = hid_enumerate(VENDOR, 0);
+            struct hid_device_info *cur_dev = devs;
+            
+            while (cur_dev)
+            {
+                if (cur_dev->vendor_id == VENDOR)
+                {
+                    printf("%s[INFO]%s Trying Sony device (Product ID: %s0x%04x%s)...\n",
+                           COLOR_BLUE, COLOR_RESET, COLOR_CYAN, cur_dev->product_id, COLOR_RESET);
+                    
+                    dev = hid_open(cur_dev->vendor_id, cur_dev->product_id, NULL);
+                    if (dev != NULL)
+                    {
+                        printf("%s[SUCCESS]%s Connected to Sony device (Product ID: %s0x%04x%s)\n",
+                               COLOR_GREEN, COLOR_RESET, COLOR_CYAN, cur_dev->product_id, COLOR_RESET);
+                        
+                        /* Dump all available device information */
+                        dump_device_info(dev);
+                        
+                        /* Clean up and exit */
+                        hid_close(dev);
+                        hid_free_enumeration(devs);
+                        hid_exit();
+                        return 0;
+                    }
+                }
+                cur_dev = cur_dev->next;
+            }
+            
+            printf("%s[ERROR]%s Could not find any PlayStation or Sony devices to dump information from.\n", COLOR_RED, COLOR_RESET);
+            hid_free_enumeration(devs);
+            hid_exit();
+            return 1;
+        }
+        
+        /* List devices if -l or -a was specified */
         if (list_all)
         {
             printf("%s%s=== Listing all connected USB devices ===%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
