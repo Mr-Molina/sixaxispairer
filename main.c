@@ -34,15 +34,15 @@
 #include <hidapi.h> /* For USB HID device communication */
 
 /* ANSI color codes for terminal output */
-#define COLOR_RESET   "\x1b[0m"
-#define COLOR_RED     "\x1b[31m"
-#define COLOR_GREEN   "\x1b[32m"
-#define COLOR_YELLOW  "\x1b[33m"
-#define COLOR_BLUE    "\x1b[34m"
+#define COLOR_RESET "\x1b[0m"
+#define COLOR_RED "\x1b[31m"
+#define COLOR_GREEN "\x1b[32m"
+#define COLOR_YELLOW "\x1b[33m"
+#define COLOR_BLUE "\x1b[34m"
 #define COLOR_MAGENTA "\x1b[35m"
-#define COLOR_CYAN    "\x1b[36m"
-#define COLOR_WHITE   "\x1b[37m"
-#define COLOR_BOLD    "\x1b[1m"
+#define COLOR_CYAN "\x1b[36m"
+#define COLOR_WHITE "\x1b[37m"
+#define COLOR_BOLD "\x1b[1m"
 
 /* Sony PlayStation vendor ID */
 static const unsigned short VENDOR = 0x054c;
@@ -152,7 +152,7 @@ static void pair_device(hid_device *dev, const char *mac, size_t mac_len)
     if ((mac_len != 12 && mac_len != 17) || !mac_to_bytes(mac, mac_len, buf + 2, sizeof(buf) - 2))
     {
         printf("%s[ERROR]%s Invalid MAC address format: %s\n", COLOR_RED, COLOR_RESET, mac);
-        printf("        MAC address must be in format '%sAABBCCDDEEFF%s' or '%sAA:BB:CC:DD:EE:FF%s'\n", 
+        printf("        MAC address must be in format '%sAABBCCDDEEFF%s' or '%sAA:BB:CC:DD:EE:FF%s'\n",
                COLOR_CYAN, COLOR_RESET, COLOR_CYAN, COLOR_RESET);
         return;
     }
@@ -164,7 +164,7 @@ static void pair_device(hid_device *dev, const char *mac, size_t mac_len)
     ret = hid_send_feature_report(dev, buf, sizeof(buf));
     if (ret == -1)
     {
-        printf("%s[ERROR]%s Failed to set MAC address. Error: %ls\n", 
+        printf("%s[ERROR]%s Failed to set MAC address. Error: %ls\n",
                COLOR_RED, COLOR_RESET, hid_error(dev));
     }
     else
@@ -172,6 +172,44 @@ static void pair_device(hid_device *dev, const char *mac, size_t mac_len)
         printf("%s[SUCCESS]%s Set MAC address to %s%02x:%02x:%02x:%02x:%02x:%02x%s\n",
                COLOR_GREEN, COLOR_RESET, COLOR_CYAN,
                buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], COLOR_RESET);
+        
+        /* Get detailed device information when pairing is successful */
+        struct hid_device_info *device_info = hid_get_device_info(dev);
+        if (device_info)
+        {
+            printf("\n%s%s=== Device Information ===%s\n", COLOR_BOLD, COLOR_GREEN, COLOR_RESET);
+            printf("%s│  Vendor ID:       0x%04x%s%s\n", COLOR_MAGENTA, device_info->vendor_id,
+                   (device_info->vendor_id == VENDOR) ? COLOR_YELLOW " (Sony)" COLOR_RESET : "", COLOR_RESET);
+            printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, device_info->product_id, COLOR_RESET);
+            printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA,
+                   device_info->manufacturer_string ? device_info->manufacturer_string : L"(Unknown)", COLOR_RESET);
+            printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA,
+                   device_info->product_string ? device_info->product_string : L"(Unknown)", COLOR_RESET);
+            printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA,
+                   device_info->serial_number ? device_info->serial_number : L"(None)", COLOR_RESET);
+            printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, device_info->interface_number, COLOR_RESET);
+            printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, device_info->path, COLOR_RESET);
+            printf("%s│  Release Number:  %hx.%hx%s\n", COLOR_MAGENTA, 
+                   device_info->release_number >> 8, device_info->release_number & 0xff, COLOR_RESET);
+            printf("%s│  Usage Page:      0x%04x%s\n", COLOR_MAGENTA, device_info->usage_page, COLOR_RESET);
+            printf("%s│  Usage:           0x%04x%s\n", COLOR_MAGENTA, device_info->usage, COLOR_RESET);
+            
+            /* Additional controller-specific information */
+            unsigned char report_buf[64];
+            memset(report_buf, 0, sizeof(report_buf));
+            report_buf[0] = 0xF2; /* Controller information report ID */
+            
+            if (hid_get_feature_report(dev, report_buf, sizeof(report_buf)) > 0)
+            {
+                printf("%s│  Firmware Ver:    %d.%d%s\n", COLOR_MAGENTA, 
+                       report_buf[1], report_buf[2], COLOR_RESET);
+                printf("%s│  Bluetooth MAC:   %02x:%02x:%02x:%02x:%02x:%02x%s\n", COLOR_MAGENTA,
+                       report_buf[4], report_buf[5], report_buf[6], 
+                       report_buf[7], report_buf[8], report_buf[9], COLOR_RESET);
+            }
+            
+            printf("%s└───────────────────────────────────────────────%s\n", COLOR_MAGENTA, COLOR_RESET);
+        }
     }
 }
 
@@ -195,7 +233,7 @@ static void show_pairing(hid_device *dev)
     ret = hid_get_feature_report(dev, buf, sizeof(buf));
     if (ret < 8)
     {
-        printf("%s[ERROR]%s Failed to read MAC address. Error: %ls\n", 
+        printf("%s[ERROR]%s Failed to read MAC address. Error: %ls\n",
                COLOR_RED, COLOR_RESET, hid_error(dev));
         return;
     }
@@ -236,13 +274,13 @@ int main(int argc, char **argv)
     {
         printf("%s%s=== SixAxis Pairer Usage ===%s\n", COLOR_BOLD, COLOR_YELLOW, COLOR_RESET);
         printf("%s\t%s         - Show current controller MAC address%s\n", COLOR_WHITE, argv[0], COLOR_RESET);
-        printf("%s\t%s %s[mac]%s   - Set controller MAC address (format: AABBCCDDEEFF or AA:BB:CC:DD:EE:FF)%s\n", 
+        printf("%s\t%s %s[mac]%s   - Set controller MAC address (format: AABBCCDDEEFF or AA:BB:CC:DD:EE:FF)%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
-        printf("%s\t%s %s-l%s      - List all connected Sony USB devices%s\n", 
+        printf("%s\t%s %s-l%s      - List all connected Sony USB devices%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
-        printf("%s\t%s %s-a%s      - List all connected USB devices (not just Sony)%s\n", 
+        printf("%s\t%s %s-a%s      - List all connected USB devices (not just Sony)%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
-        printf("%s\t%s %s-h%s      - Show this help message%s\n", 
+        printf("%s\t%s %s-h%s      - Show this help message%s\n",
                COLOR_WHITE, argv[0], COLOR_CYAN, COLOR_WHITE, COLOR_RESET);
         return 0;
     }
@@ -276,11 +314,11 @@ int main(int argc, char **argv)
                 printf("%s│  Vendor ID:       0x%04x%s%s\n", COLOR_MAGENTA, cur_dev->vendor_id,
                        (cur_dev->vendor_id == VENDOR) ? COLOR_YELLOW " (Sony)" COLOR_RESET : "", COLOR_RESET);
                 printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, cur_dev->product_id, COLOR_RESET);
-                printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA, 
+                printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA,
                        cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown)", COLOR_RESET);
-                printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA, 
+                printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA,
                        cur_dev->product_string ? cur_dev->product_string : L"(Unknown)", COLOR_RESET);
-                printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA, 
+                printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA,
                        cur_dev->serial_number ? cur_dev->serial_number : L"(None)", COLOR_RESET);
                 printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, cur_dev->interface_number, COLOR_RESET);
                 printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, cur_dev->path, COLOR_RESET);
@@ -292,7 +330,7 @@ int main(int argc, char **argv)
                     {
                         if (cur_dev->product_id == PRODUCT[i])
                         {
-                            printf("%s│  %s** This is a supported PlayStation controller **%s\n", 
+                            printf("%s│  %s** This is a supported PlayStation controller **%s\n",
                                    COLOR_MAGENTA, COLOR_GREEN, COLOR_RESET);
                             break;
                         }
@@ -312,7 +350,7 @@ int main(int argc, char **argv)
             else
             {
                 printf("%s[INFO]%s No Sony USB devices found.\n", COLOR_BLUE, COLOR_RESET);
-                printf("       Use '%s%s -a%s' to list all USB devices on the system.\n", 
+                printf("       Use '%s%s -a%s' to list all USB devices on the system.\n",
                        COLOR_CYAN, argv[0], COLOR_RESET);
             }
         }
@@ -320,14 +358,14 @@ int main(int argc, char **argv)
         {
             if (list_all)
             {
-                printf("%s[INFO]%s Found %s%d%s USB device(s).\n", 
+                printf("%s[INFO]%s Found %s%d%s USB device(s).\n",
                        COLOR_BLUE, COLOR_RESET, COLOR_YELLOW, found_devices, COLOR_RESET);
             }
             else
             {
-                printf("%s[INFO]%s Found %s%d%s Sony USB device(s).\n", 
+                printf("%s[INFO]%s Found %s%d%s Sony USB device(s).\n",
                        COLOR_BLUE, COLOR_RESET, COLOR_YELLOW, found_devices, COLOR_RESET);
-                printf("       Use '%s%s -a%s' to list all USB devices on the system.\n", 
+                printf("       Use '%s%s -a%s' to list all USB devices on the system.\n",
                        COLOR_CYAN, argv[0], COLOR_RESET);
             }
         }
@@ -363,11 +401,11 @@ int main(int argc, char **argv)
         struct hid_device_info *devs, *cur_dev;
         int found_sony_devices = 0;
         int is_mac_address_provided = (argc == 2 && argv[1][0] != '-');
-        hid_device *alt_dev = NULL;  /* For non-standard devices */
+        hid_device *alt_dev = NULL; /* For non-standard devices */
         struct hid_device_info *selected_device = NULL;
 
         fprintf(stderr, "%s[ERROR]%s Could not find any PlayStation controllers (Vendor ID: %s0x%04x%s, Product IDs: %s0x%04x%s, %s0x%04x%s)\n",
-                COLOR_RED, COLOR_RESET, COLOR_CYAN, VENDOR, COLOR_RESET, 
+                COLOR_RED, COLOR_RESET, COLOR_CYAN, VENDOR, COLOR_RESET,
                 COLOR_CYAN, PRODUCT[0], COLOR_RESET, COLOR_CYAN, PRODUCT[1], COLOR_RESET);
 
         /* If a MAC address is provided, we'll try to find any HID device to use */
@@ -391,7 +429,7 @@ int main(int argc, char **argv)
                         cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown manufacturer)",
                         cur_dev->product_string ? cur_dev->product_string : L"(Unknown product)",
                         cur_dev->serial_number ? cur_dev->serial_number : L"(No serial number)");
-                
+
                 /* If we have a MAC address to set and this is the first Sony device, select it */
                 if (is_mac_address_provided && !selected_device)
                 {
@@ -406,16 +444,16 @@ int main(int argc, char **argv)
         {
             printf("%s[INFO]%s Attempting to use Sony device (Product ID: %s0x%04x%s) for MAC address setting...\n",
                    COLOR_BLUE, COLOR_RESET, COLOR_CYAN, selected_device->product_id, COLOR_RESET);
-            
+
             alt_dev = hid_open(selected_device->vendor_id, selected_device->product_id, NULL);
             if (alt_dev)
             {
                 printf("%s[WARNING]%s This device is not a standard PlayStation controller.\n", COLOR_YELLOW, COLOR_RESET);
                 printf("          MAC address setting may not work as expected.\n");
-                
+
                 /* Set the MAC address */
                 pair_device(alt_dev, argv[1], strlen(argv[1]));
-                
+
                 /* Clean up */
                 hid_close(alt_dev);
                 hid_free_enumeration(devs);
@@ -434,7 +472,7 @@ int main(int argc, char **argv)
             selected_device = NULL;
 
             printf("%s[INFO]%s Searching for any USB HID device that might work...\n", COLOR_BLUE, COLOR_RESET);
-            
+
             while (cur_dev)
             {
                 all_devices++;
@@ -449,20 +487,20 @@ int main(int argc, char **argv)
             if (selected_device)
             {
                 printf("%s[INFO]%s Attempting to use non-Sony device (Vendor ID: %s0x%04x%s, Product ID: %s0x%04x%s)\n",
-                       COLOR_BLUE, COLOR_RESET, 
+                       COLOR_BLUE, COLOR_RESET,
                        COLOR_CYAN, selected_device->vendor_id, COLOR_RESET,
                        COLOR_CYAN, selected_device->product_id, COLOR_RESET);
-                
+
                 alt_dev = hid_open(selected_device->vendor_id, selected_device->product_id, NULL);
                 if (alt_dev)
                 {
-                    printf("%s[WARNING]%s This is not a Sony device. MAC address setting will likely fail,\n", 
+                    printf("%s[WARNING]%s This is not a Sony device. MAC address setting will likely fail,\n",
                            COLOR_YELLOW, COLOR_RESET);
                     printf("          but an attempt will be made anyway.\n");
-                    
+
                     /* Set the MAC address */
                     pair_device(alt_dev, argv[1], strlen(argv[1]));
-                    
+
                     /* Clean up */
                     hid_close(alt_dev);
                     hid_free_enumeration(devs);
@@ -479,9 +517,9 @@ int main(int argc, char **argv)
         /* If we reach here, we couldn't find or open any suitable device */
         if (found_sony_devices == 0)
         {
-            fprintf(stderr, "%s[WARNING]%s No Sony devices found. Make sure the controller is connected via USB and powered on\n", 
+            fprintf(stderr, "%s[WARNING]%s No Sony devices found. Make sure the controller is connected via USB and powered on\n",
                     COLOR_YELLOW, COLOR_RESET);
-            
+
             /* Only ask to list all devices if we're not trying to set a MAC address */
             if (!is_mac_address_provided)
             {
@@ -506,11 +544,11 @@ int main(int argc, char **argv)
                             printf("%s%s┌─ Device %d ─────────────────────────────────────%s\n", COLOR_BOLD, COLOR_MAGENTA, all_devices, COLOR_RESET);
                             printf("%s│  Vendor ID:       0x%04x%s\n", COLOR_MAGENTA, cur_dev->vendor_id, COLOR_RESET);
                             printf("%s│  Product ID:      0x%04x%s\n", COLOR_MAGENTA, cur_dev->product_id, COLOR_RESET);
-                            printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA, 
+                            printf("%s│  Manufacturer:    %ls%s\n", COLOR_MAGENTA,
                                    cur_dev->manufacturer_string ? cur_dev->manufacturer_string : L"(Unknown)", COLOR_RESET);
-                            printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA, 
+                            printf("%s│  Product:         %ls%s\n", COLOR_MAGENTA,
                                    cur_dev->product_string ? cur_dev->product_string : L"(Unknown)", COLOR_RESET);
-                            printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA, 
+                            printf("%s│  Serial Number:   %ls%s\n", COLOR_MAGENTA,
                                    cur_dev->serial_number ? cur_dev->serial_number : L"(None)", COLOR_RESET);
                             printf("%s│  Interface:       %d%s\n", COLOR_MAGENTA, cur_dev->interface_number, COLOR_RESET);
                             printf("%s│  Path:            %s%s\n", COLOR_MAGENTA, cur_dev->path, COLOR_RESET);
@@ -525,7 +563,7 @@ int main(int argc, char **argv)
                         }
                         else
                         {
-                            printf("%s[INFO]%s Found %s%d%s USB HID device(s).\n", 
+                            printf("%s[INFO]%s Found %s%d%s USB HID device(s).\n",
                                    COLOR_BLUE, COLOR_RESET, COLOR_YELLOW, all_devices, COLOR_RESET);
                             printf("       If your controller is in the list above but not recognized,\n");
                             printf("       it might be in a different mode or require special drivers.\n");
@@ -545,7 +583,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            fprintf(stderr, "%s[WARNING]%s Found %s%d%s Sony device(s), but none match the supported PlayStation controllers\n", 
+            fprintf(stderr, "%s[WARNING]%s Found %s%d%s Sony device(s), but none match the supported PlayStation controllers\n",
                     COLOR_YELLOW, COLOR_RESET, COLOR_CYAN, found_sony_devices, COLOR_RESET);
             fprintf(stderr, "          If your controller is listed above, it might be a different model or in an unsupported mode\n");
         }
