@@ -2,9 +2,10 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "windows-default",
-      "displayName": "Windows x64 Debug",
-      "generator": "Ninja",
+      "name": "windows-msvc",
+      "displayName": "Windows MSVC x64 Debug",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -13,12 +14,23 @@
       }
     },
     {
-      "name": "windows-release",
-      "displayName": "Windows x64 Release",
+      "name": "windows-ninja",
+      "displayName": "Windows Ninja x64 Debug",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-release",
+      "binaryDir": "${sourceDir}/build-ninja",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "HIDAPI_ROOT_DIR": "${sourceDir}/hidapi-win",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
+      }
+    },
+    {
+      "name": "windows-mingw",
+      "displayName": "Windows MinGW x64 Debug",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build-mingw",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "HIDAPI_ROOT_DIR": "${sourceDir}/hidapi-win",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
       }
@@ -26,12 +38,16 @@
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "configurePreset": "windows-default"
+      "name": "msvc-debug",
+      "configurePreset": "windows-msvc"
     },
     {
-      "name": "release",
-      "configurePreset": "windows-release"
+      "name": "ninja-debug",
+      "configurePreset": "windows-ninja"
+    },
+    {
+      "name": "mingw-debug",
+      "configurePreset": "windows-mingw"
     }
   ]
 }
