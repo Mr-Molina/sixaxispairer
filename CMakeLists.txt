@@ -4,7 +4,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMakeMod
 
 project(sixaxispairer VERSION 1.1.0 LANGUAGES C)
 
-
 set(HIDAPI_FIND_DEBUG ON CACHE BOOL "Enable debug output for FindHIDAPI module")
 
 find_package(hidapi REQUIRED)
@@ -12,10 +11,15 @@ find_package(hidapi REQUIRED)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-set(SOURCES main.c)
+set(SOURCES 
+    main.c
+    mac_utils.c
+    controller_info.c
+    controller_connection.c
+    ui.c
+)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${hidapi_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} hidapi::hidapi ${PLATFORM_LIBS})
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
-
