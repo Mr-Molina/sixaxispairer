@@ -2,13 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug sixaxispairer",
+            "name": "Debug sixaxispairer (VS Build)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/sixaxispairer.exe",
+            "program": "${workspaceFolder}/build-vs/sixaxispairer.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/build-vs",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "Build with VS"
+        },
+        {
+            "name": "Debug sixaxispairer (CMake Build)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/sixaxispairer.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/Debug",
             "environment": [
                 {
                     "name": "PATH",

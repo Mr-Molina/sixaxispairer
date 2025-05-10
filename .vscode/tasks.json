@@ -2,6 +2,20 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build with VS",
+            "type": "shell",
+            "command": "${workspaceFolder}/build-direct.bat",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "CMake: configure",
             "command": "cmake",
             "args": [
@@ -15,10 +29,7 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [],
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            }
+            "group": "build"
         },
         {
             "label": "CMake: build",
@@ -35,10 +46,7 @@
             "problemMatcher": [
                 "$gcc"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "dependsOn": [
                 "CMake: configure"
             ]
@@ -49,7 +57,7 @@
             "command": "copy",
             "args": [
                 "${workspaceFolder}\\hidapi-win\\x64\\hidapi.dll",
-                "${workspaceFolder}\\build\\"
+                "${workspaceFolder}\\build\\Debug\\"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
