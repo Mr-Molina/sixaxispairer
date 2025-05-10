@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug sixaxispairer",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/sixaxispairer.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "${workspaceFolder}/hidapi-win/x64;${env:PATH}"
+                }
+            ],
+            "console": "externalTerminal",
+            "preLaunchTask": "CMake: build"
+        }
+    ]
+}
